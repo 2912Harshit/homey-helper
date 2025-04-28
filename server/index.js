@@ -1,7 +1,6 @@
 const express = require('express');
 const { ApolloServer } = require('apollo-server-express');
-
-require('./models/db');
+const connectDB = require('./models/db');
 
 const mongoose = require('mongoose')
 const bcrypt = require('bcrypt');
@@ -229,11 +228,42 @@ const resolvers = {
 
 };
 
+const app = express();
+
+app.use(express.static('public'));
+
+const corsOptions = {
+  origin: 'http://localhost:3000',
+  credentials: true,
+};
+
+// Initialize Apollo Server
 const apolloserver = new ApolloServer({
   typeDefs,
   resolvers,
 });
 
+// Start server
+async function startServer() {
+  try {
+    // Connect to database first
+    await connectDB();
+    
+    // Start Apollo Server
+    await apolloserver.start();
+    apolloserver.applyMiddleware({ app, path: '/graphql', cors: true });
+    
+    // Start Express server
+    app.listen('4000', () => {
+      console.log('Server is running on port 4000');
+    });
+  } catch (err) {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 // Service Provider
 
@@ -998,22 +1028,3 @@ async function addReview(_, { serviceproviderservicesid, customerid, reviewdate,
 
 
 // ##############################################################################################################
-
-
-const app = express();
-
-app.use(express.static('public'));
-
-const corsOptions = {
-  origin: 'http://localhost:3000',
-  credentials: true,
-};
-
-apolloserver.start()
-  .then(() => {
-    apolloserver.applyMiddleware({ app, path: '/graphql', cors: true });  // have to edit this at the end of testing
-  });
-
-app.listen('4000', () => {
-  console.log('Server is running');
-});
